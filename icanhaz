@@ -158,12 +158,10 @@ function initproject() {
 }
 function clean() {
   sysmsg "CLEANIN DIS SHIT"
-  for pttrn in "$CLEANPTTRNS[@]"; do
-    rm -rf $(find -iname ${pttrn})
+  for pttrn in "${CLEANPTTRNS[@]}"; do
+    sysmsg "  - Cleaning \"${pttrn}\""
+    rm -rf $(find -iname "${pttrn}")
   done
-  #rm -rf $(find -iname "*~") 
-  #rm -rf $(find -iname "*swp") 
-  #rm -rf $(find -iname "*.pyc") 
 }
 function devsrv() {
   sysmsg "STARTIN TEH SERVR"
