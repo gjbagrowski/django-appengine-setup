@@ -186,7 +186,10 @@ elif [ $1 == 'clean'      ]; then clean
 elif [ $1 == 'devsrv'     ]; then clean && collectstatic && devsrv
 elif [ $1 == 'deploy'     ]; then deploy
 elif [ $1 == 'static'     ]; then collectstatic
-elif [ $1 == 'mkgae'      ]; then setup_appengine_env $@
+elif [ $1 == 'runtool'    ]; then 
+  tool=$2
+  shift 2
+  PYTHONPATH=".:lib/py" ./${TOOLPATH}/${tool}.py $@
 else 
   sysmsg "THAR IZ NO COMMAND '$1' PASSIN TO ./manage.py"
   ./manage.py $@
