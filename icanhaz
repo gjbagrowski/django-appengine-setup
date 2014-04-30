@@ -1,0 +1,177 @@
+#!/bin/bash
+
+function sysmsg() {
+  now=$(date "+%I:%m %p")
+  echo "${now}  " $@
+}
+
+function setup_appengine_env() {
+  appenginepath=$1
+  if [ -L env/google_appengine ]; then
+    sysmsg "removing existing symlink"
+    rm env/google_appengine
+  else
+    sysmsg "Appengine symlink does not exist"
+  fi
+
+  if [ -z ${appenginepath} ]; then
+    sysmsg "Enter path to appengine installation"
+    read appenginepath
+    echo "AppEngine path: ${appenginepath}"
+  fi
+
+  if [ -e ${appenginepath} ] && [ -e ${appenginepath}/appcfg.py ]; then
+    sysmsg "Setting up appengine"
+    mkdir -p env
+    ln -s ${appenginepath} env/google_appengine
+  else
+    sysmsg "Invalid AppEngine installation path"
+  fi
+}
+function setup_paths() {
+  sysmsg "Fixing import paths in djangoappengine"
+  function a() { echo "$1" >> djangoappengine/__init__.py; }
+  a "import sys"
+  a "from os.path import normpath, join, dirname, abspath"
+  a "sys.path.insert(0, normpath(join(dirname(abspath(__file__)),'../lib/py')))"
+
+  sysmsg "Fixing import paths in manage.py"
+  function a() { echo "$1" >> tmpmanage.py; }
+  a "#!/usr/bin/env python2"
+  head manage.py -n 3 | tail -n 2 >> tmpmanage.py
+  a "from os.path import normpath, join, dirname, abspath"
+  a "sys.path.insert(0, normpath(join(dirname(abspath(__file__)),'lib/py')))"
+  tail -n +4 manage.py >> tmpmanage.py
+  mv tmpmanage.py manage.py
+  chmod a+x manage.py
+}
+function setup_urls() {
+  sysmsg "Setting up urls in app.yaml"
+  sysmsg "  - To finish setting up, please set those values in settings.py:"
+  sysmsg "    STATIC_ROOT='static/files'"
+  sysmsg "    STATIC_URL='/static/'"
+  head app.yaml -n -2 > tmpapp.yaml
+  echo "- url: /static" >> tmpapp.yaml
+  echo "  static_dir: /static_files" >> tmpapp.yaml
+  echo "" >> tmpapp.yaml
+  tail app.yaml -n 2 >> tmpapp.yaml
+  mv tmpapp.yaml app.yaml
+}
+function initproject() {
+  sysmsg "INITIALIZIN TEH PROJECT"
+  project=$1
+  appenginepath=$2
+
+  if [ $# -lt 2 ]; then
+    echo "USAGE: $0 PROJECT_NAME APPENGINE_PATH"
+    exit -2
+  fi
+
+
+  pylibdir="lib/py"
+  tmpdir="tmpinstalls"
+  github="https://github.com/django-nonrel"
+  djangobin="${pylibdir}/django/bin"
+  zips=(
+    "${github}/django/archive/nonrel-1.5.zip"
+    "${github}/djangoappengine/archive/master.zip"
+    "${github}/djangotoolbox/archive/master.zip"
+    "${github}/django-dbindexer/archive/master.zip"
+    "https://bitbucket.org/twanschik/django-autoload/get/tip.zip"
+  )
+  nonrel_deps=(
+    'django' 
+    'djangotoolbox'
+    'dbindexer'
+    'autoload'
+  )
+
+  # Remove existing .git dir
+  if [ -e .git ]; then
+    sysmsg "Removing existing .git directory"
+    rm -rf .git
+  fi
+
+  mkdir -p ${pylibdir}
+
+  sysmsg "Creating temporary directory ${tmpdir}"
+  mkdir ${tmpdir}
+  cd ${tmpdir}
+  
+  # Extract the zipfiles
+  sysmsg "Downloading dependencies required to run on appengine"
+  for url in "${zips[@]}"; do
+    fname=$(basename ${url})
+
+    sysmsg "  - Downloading ${fname} from ${url}"
+    wget -q ${url}
+
+    sysmsg "    Unpacking ${fname}"
+    unzip -q ${fname}
+
+    sysmsg "    Removing ${fname}"
+    rm ${fname}
+  done
+
+  # Copy djangoappengine to app root and add python path mangling
+  sysmsg "Installing djangoappengine to project root directory"
+  cp -r $(find -mindepth 2 -maxdepth 2 -name djangoappengine -type d) ../
+
+  # Copy python libraries
+  sysmsg "Installing libraries to '${pylibdir}'"
+  for dep in "${nonrel_deps[@]}"; do
+    libdir="$(find -mindepth 2 -maxdepth 2 -name ${dep} -type d)"
+    sysmsg "  - ${libdir} -> ${pylibdir}/$(basename ${libdir})"
+    cp -r "${libdir}" "../${pylibdir}/"
+  done
+
+
+  sysmsg "Removing directory ${tmpdir}"
+  cd ..
+  rm -rf ${tmpdir}
+
+  sysmsg "Creating django project '${project}'"
+  export PYTHONPATH=${pylibdir}
+  python2 ${djangobin}/django-admin.py startproject           \
+            --name=app.yaml                                   \
+            --template=djangoappengine/conf/project_template  \
+            ${project} .
+
+
+  setup_paths
+  setup_appengine_env ${appenginepath}
+  setup_urls
+}
+function clean() {
+  sysmsg "CLEANIN DIS SHIT"
+  rm -rf $(find -iname "*~") 
+  rm -rf $(find -iname "*swp") 
+  rm -rf $(find -iname "*.pyc") 
+}
+function devsrv() {
+  sysmsg "STARTIN TEH SERVR"
+  ./manage.py runserver
+}
+function deploy() {
+  sysmsg "UPLOADIN TEH APP 2 TEH SERVR"
+  ./manage.py deploy
+}
+function collectstatic() {
+  sysmsg "COLLECTIN THEM FILEZ"
+  echo yes | ./manage.py collectstatic
+}
+
+
+export PATH="$(pwd)/env/google_appengine:$PATH"
+sysmsg "PATH=${PATH}"
+
+if [ $1 == 'initproject'  ]; then shift 1 && initproject $@
+elif [ $1 == 'clean'      ]; then clean
+elif [ $1 == 'devsrv'     ]; then clean && collectstatic && devsrv
+elif [ $1 == 'deploy'     ]; then deploy
+elif [ $1 == 'static'     ]; then collectstatic
+elif [ $1 == 'mkgae'      ]; then setup_appengine_env $@
+else 
+  sysmsg "THAR IZ NO COMMAND '$1' PASSIN TO ./manage.py"
+  ./manage.py $@
+fi
