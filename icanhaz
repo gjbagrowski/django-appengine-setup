@@ -199,7 +199,7 @@ elif [ ${cmd} == 'deploy'     ]; then deploy
 elif [ ${cmd} == 'static'     ]; then collectstatic
 elif [ ${cmd} == 'pylib'      ]; then install_pylib $@
 elif [ ${cmd} == 'runtool'    ]; then 
-  tool=$2
+  tool=$1
   shift 1
   PYTHONPATH=".:lib/py" ./${TOOLPATH}/${tool}.py $@
 else 
