@@ -175,20 +175,34 @@ function collectstatic() {
   sysmsg "COLLECTIN THEM FILEZ"
   echo yes | ./manage.py collectstatic
 }
+function install_pylib() {
+  libname=$1
+  [[ $# > 1 ]] && libdir=$2 || libdir=$1
+  sysmsg "INSTALLIN ${libname} to ${libdir}"
+  source ${ENVPATH}/bin/activate
+  pip2 install ${libname}
+  sysmsg "Copying ${libdir} to ${PYLIBDIR}/"
+  cp -r ${ENVPATH}/lib/python2.7/site-packages/${libdir} ${PYLIBDIR}/${libdir}
+}
 
 
 export PATH="$(pwd)/${ENVPATH}/google_appengine:$PATH"
 
-if [ $1 == 'initproject'  ]; then shift 1 && initproject $@
-elif [ $1 == 'clean'      ]; then clean
-elif [ $1 == 'devsrv'     ]; then clean && collectstatic && devsrv
-elif [ $1 == 'deploy'     ]; then deploy
-elif [ $1 == 'static'     ]; then collectstatic
-elif [ $1 == 'runtool'    ]; then 
+# Extract cmline args:
+cmd=$1
+shift 1
+
+if [ ${cmd} == 'initproject'  ]; then initproject $@
+elif [ ${cmd} == 'clean'      ]; then clean
+elif [ ${cmd} == 'devsrv'     ]; then clean && collectstatic && devsrv
+elif [ ${cmd} == 'deploy'     ]; then deploy
+elif [ ${cmd} == 'static'     ]; then collectstatic
+elif [ ${cmd} == 'pylib'      ]; then install_pylib $@
+elif [ ${cmd} == 'runtool'    ]; then 
   tool=$2
-  shift 2
+  shift 1
   PYTHONPATH=".:lib/py" ./${TOOLPATH}/${tool}.py $@
 else 
-  sysmsg "THAR IZ NO COMMAND '$1' PASSIN TO ./manage.py"
+  sysmsg "THAR IZ NO COMMAND '${cmd}' PASSIN TO ./manage.py"
   ./manage.py $@
 fi
