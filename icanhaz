@@ -2,207 +2,238 @@
 
 # Load config values:
 if [ -e icanhaz.conf ]; then
-  source icahnaz.conf
+    source icahnaz.conf
 else
-  # Defaults
-  TOOLPATH="tools"
-  ENVPATH="env/"
-  PYLIBDIR="lib/py"
-  CLEANPTTRNS=(
-    "*~"
-    "*swp"
-    "*.pyc"
-  )
+    # Defaults
+    TOOLPATH="tools"
+    ENVPATH="env/"
+    PYLIBDIR="lib/py"
+    CLEANPTTRNS=(
+        "*~"
+        "*swp"
+        "*.pyc"
+    )
 fi
 
 function sysmsg() {
-  now=$(date "+%I:%m %p")
-  echo "${now}  " $@
+    now=$(date "+%I:%m %p")
+    echo "${now}  " $@
 }
 
 function setup_appengine_env() {
-  appenginepath=$1
-  if [ -L ${ENVPATH}/google_appengine ]; then
-    sysmsg "removing existing symlink"
-    rm ${ENVPATH}/google_appengine
-  else
-    sysmsg "Appengine symlink does not exist"
-  fi
+    appenginepath=$1
+    if [ -L ${ENVPATH}/google_appengine ]; then
+        sysmsg "removing existing symlink"
+        rm ${ENVPATH}/google_appengine
+    else
+        sysmsg "Appengine symlink does not exist"
+    fi
 
-  if [ -z ${appenginepath} ]; then
-    sysmsg "Enter path to appengine installation"
-    read appenginepath
-    echo "AppEngine path: ${appenginepath}"
-  fi
+    if [ -z ${appenginepath} ]; then
+        sysmsg "Enter path to appengine installation"
+        read appenginepath
+        echo "AppEngine path: ${appenginepath}"
+    fi
 
-  if [ -e ${appenginepath} ] && [ -e ${appenginepath}/appcfg.py ]; then
-    sysmsg "Setting up appengine"
-    mkdir -p ${ENVPATH}
-    ln -s ${appenginepath} ${ENVPATH}/google_appengine
-  else
-    sysmsg "Invalid AppEngine installation path"
-  fi
+    if [ -e ${appenginepath} ] && [ -e ${appenginepath}/appcfg.py ]; then
+        sysmsg "Setting up appengine"
+        ln -s ${appenginepath} ${ENVPATH}/google_appengine
+    else
+        sysmsg "Invalid AppEngine installation path"
+    fi
 }
 function setup_paths() {
-  sysmsg "Fixing import paths in djangoappengine"
-  function a() { echo "$1" >> djangoappengine/__init__.py; }
-  a "import sys"
-  a "from os.path import normpath, join, dirname, abspath"
-  a "sys.path.insert(0, normpath(join(dirname(abspath(__file__)),'../lib/py')))"
-
-  sysmsg "Fixing import paths in manage.py"
-  function a() { echo "$1" >> tmpmanage.py; }
-  a "#!/usr/bin/env python2"
-  head manage.py -n 3 | tail -n 2 >> tmpmanage.py
-  a "from os.path import normpath, join, dirname, abspath"
-  a "sys.path.insert(0, normpath(join(dirname(abspath(__file__)),'lib/py')))"
-  tail -n +4 manage.py >> tmpmanage.py
-  mv tmpmanage.py manage.py
-  chmod a+x manage.py
+    sysmsg "Fixing import paths in manage.py"
+    function a() { echo "$1" >> tmpmanage.py; }
+    a "#!/usr/bin/env python2"
+    head manage.py -n 3 | tail -n 2 >> tmpmanage.py
+    a "from os.path import normpath, join, dirname, abspath"
+    a "sys.path.insert(0, normpath(join(dirname(abspath(__file__)),'lib/py')))"
+    tail -n +4 manage.py >> tmpmanage.py
+    mv tmpmanage.py manage.py
+    chmod a+x manage.py
 }
 function setup_urls() {
-  sysmsg "Setting up urls in app.yaml"
-  sysmsg "  - To finish setting up, please set those values in settings.py:"
-  sysmsg "    STATIC_ROOT='static/files'"
-  sysmsg "    STATIC_URL='/static/'"
-  head app.yaml -n -2 > tmpapp.yaml
-  echo "- url: /static" >> tmpapp.yaml
-  echo "  static_dir: /static_files" >> tmpapp.yaml
-  echo "" >> tmpapp.yaml
-  tail app.yaml -n 2 >> tmpapp.yaml
-  mv tmpapp.yaml app.yaml
+    sysmsg "Setting up urls in app.yaml"
+    sysmsg "  - To finish setting up, please set those values in settings.py:"
+    sysmsg "    STATIC_ROOT='static/files'"
+    sysmsg "    STATIC_URL='/static/'"
+    head app.yaml -n -2 > tmpapp.yaml
+    echo "- url: /static" >> tmpapp.yaml
+    echo "  static_dir: /static_files" >> tmpapp.yaml
+    echo "" >> tmpapp.yaml
+    tail app.yaml -n 2 >> tmpapp.yaml
+    mv tmpapp.yaml app.yaml
 }
-function initproject() {
-  sysmsg "INITIALIZIN TEH PROJECT"
-  project=$1
-  appenginepath=$2
+function cmd_download_deps() {
+    tmpdir="tmpinstalls"
+    github="https://github.com/django-nonrel"
+    zips=(
+        "${github}/django/archive/nonrel-1.5.zip"
+        "${github}/djangoappengine/archive/master.zip"
+        "${github}/djangotoolbox/archive/master.zip"
+        "${github}/django-dbindexer/archive/master.zip"
+        "https://bitbucket.org/twanschik/django-autoload/get/tip.zip"
+    )
+    nonrel_deps=(
+        'djangoappengine'
+        'django' 
+        'djangotoolbox'
+        'dbindexer'
+        'autoload'
+    )
 
-  if [ $# -lt 2 ]; then
-    echo "USAGE: $0 PROJECT_NAME APPENGINE_PATH"
-    exit -2
-  fi
+    sysmsg "Creating temporary directory ${tmpdir}"
+    mkdir ${tmpdir}
+    cd ${tmpdir}
+    
 
+    mkdir -p ${PYLIBDIR}
+    # Extract the zipfiles
+    sysmsg "Downloading dependencies required to run on appengine"
+    for url in "${zips[@]}"; do
+        fname=$(basename ${url})
 
-  tmpdir="tmpinstalls"
-  github="https://github.com/django-nonrel"
-  djangobin="${PYLIBDIR}/django/bin"
-  zips=(
-    "${github}/django/archive/nonrel-1.5.zip"
-    "${github}/djangoappengine/archive/master.zip"
-    "${github}/djangotoolbox/archive/master.zip"
-    "${github}/django-dbindexer/archive/master.zip"
-    "https://bitbucket.org/twanschik/django-autoload/get/tip.zip"
-  )
-  nonrel_deps=(
-    'django' 
-    'djangotoolbox'
-    'dbindexer'
-    'autoload'
-  )
+        sysmsg "  - Downloading ${fname} from ${url}"
+        wget -q ${url}
 
-  # Remove existing .git dir
-  if [ -e .git ]; then
-    sysmsg "Removing existing .git directory"
-    rm -rf .git
-  fi
+        sysmsg "    Unpacking ${fname}"
+        unzip -q ${fname}
 
-  mkdir -p ${PYLIBDIR}
+        sysmsg "    Removing ${fname}"
+        rm ${fname}
+    done
 
-  sysmsg "Creating temporary directory ${tmpdir}"
-  mkdir ${tmpdir}
-  cd ${tmpdir}
-  
-  # Extract the zipfiles
-  sysmsg "Downloading dependencies required to run on appengine"
-  for url in "${zips[@]}"; do
-    fname=$(basename ${url})
+    # Copy python libraries
+    sysmsg "Installing libraries to '${PYLIBDIR}'"
+    for dep in "${nonrel_deps[@]}"; do
+        libdir="$(find -mindepth 2 -maxdepth 2 -name ${dep} -type d)"
+        sysmsg "  - ${libdir} -> ${PYLIBDIR}/$(basename ${libdir})"
+        cp -r "${libdir}" "../${PYLIBDIR}/"
+    done
 
-    sysmsg "  - Downloading ${fname} from ${url}"
-    wget -q ${url}
-
-    sysmsg "    Unpacking ${fname}"
-    unzip -q ${fname}
-
-    sysmsg "    Removing ${fname}"
-    rm ${fname}
-  done
-
-  # Copy djangoappengine to app root and add python path mangling
-  sysmsg "Installing djangoappengine to project root directory"
-  cp -r $(find -mindepth 2 -maxdepth 2 -name djangoappengine -type d) ../
-
-  # Copy python libraries
-  sysmsg "Installing libraries to '${PYLIBDIR}'"
-  for dep in "${nonrel_deps[@]}"; do
-    libdir="$(find -mindepth 2 -maxdepth 2 -name ${dep} -type d)"
-    sysmsg "  - ${libdir} -> ${PYLIBDIR}/$(basename ${libdir})"
-    cp -r "${libdir}" "../${PYLIBDIR}/"
-  done
-
-
-  sysmsg "Removing directory ${tmpdir}"
-  cd ..
-  rm -rf ${tmpdir}
-
-  sysmsg "Creating django project '${project}'"
-  export PYTHONPATH=${PYLIBDIR}
-  python2 ${djangobin}/django-admin.py startproject           \
-            --name=app.yaml                                   \
-            --template=djangoappengine/conf/project_template  \
-            ${project} .
-
-
-  setup_paths
-  setup_appengine_env ${appenginepath}
-  setup_urls
+    sysmsg "Removing directory ${tmpdir}"
+    cd ..
+    rm -rf ${tmpdir}
 }
-function clean() {
-  sysmsg "CLEANIN DIS SHIT"
-  for pttrn in "${CLEANPTTRNS[@]}"; do
-    sysmsg "  - Cleaning \"${pttrn}\""
-    rm -rf $(find -iname "${pttrn}")
-  done
+function cmd_setupproject() {
+    project=$1
+    appenginepath=$2
+    function a() { echo "$1" >> fixpath.py; }
+    echo '# -*- coding: utf-8 -*-' > fixpath.py
+    a 'import sys'
+    a 'from os.path import normpath, join, dirname, abspath'
+    a 'sys.path.insert(0, normpath(join(dirname(abspath(__file__)), "lib/py")))'
+    a 'from djangoappengine.main import application as main'
+    a 'from djangoappengine.appstats import application as appstats'
+
+    sysmsg "Creating django project '${project}'"
+    djangobin="${PYLIBDIR}/django/bin"
+    export DJANGO_SETTINGS_MODULE=""
+    export PYTHONPATH=".:${PYLIBDIR}"
+    echo "DJANGOBIN: ${djangobin}"
+    python2 ${djangobin}/django-admin.py startproject                   \
+              --name=app.yaml                                           \
+              --template=lib/py/djangoappengine/conf/project_template   \
+              ${project} .
+
+    #setup_paths
+    virtualenv ${ENVPATH}
+    setup_appengine_env ${appenginepath}
+    setup_urls
 }
-function devsrv() {
+function cmd_createproject() {
+    sysmsg "INITIALIZIN TEH PROJECT"
+
+    if [ $# -lt 2 ]; then
+        echo "USAGE: $0 createproject PROJECT_NAME APPENGINE_PATH"
+        exit -2
+    fi
+
+    # Remove existing .git dir
+    if [ -e .git ]; then
+        sysmsg "Removing existing .git directory"
+        rm -rf .git
+    fi
+
+
+    cmd_download_deps
+    cmd_setupproject $@
+}
+function cmd_clean() {
+    sysmsg "CLEANIN DIS SHIT"
+    for pttrn in "${CLEANPTTRNS[@]}"; do
+        #sysmsg "  - Cleaning \"${pttrn}\""
+        rm -rf $(find -iname "${pttrn}")
+    done
+}
+function cmd_devsrv() {
   sysmsg "STARTIN TEH SERVR"
   ./manage.py runserver
 }
-function deploy() {
+function cmd_deploy() {
   sysmsg "UPLOADIN TEH APP 2 TEH SERVR"
   ./manage.py deploy
 }
-function collectstatic() {
-  sysmsg "COLLECTIN THEM FILEZ"
-  echo yes | ./manage.py collectstatic
+function cmd_collectstatic() {
+    sysmsg "COLLECTIN THEM FILEZ"
+    echo yes | ./manage.py collectstatic &> /dev/null
 }
-function install_pylib() {
-  libname=$1
-  [[ $# > 1 ]] && libdir=$2 || libdir=$1
-  sysmsg "INSTALLIN ${libname} to ${libdir}"
-  source ${ENVPATH}/bin/activate
-  pip2 install ${libname}
-  sysmsg "Copying ${libdir} to ${PYLIBDIR}/"
-  cp -r ${ENVPATH}/lib/python2.7/site-packages/${libdir} ${PYLIBDIR}/${libdir}
+function cmd_install_pylib() {
+    libname=$1
+    [[ $# > 1 ]] && libdir=$2 || libdir=$1
+    sysmsg "INSTALLIN ${libname} to ${libdir}"
+    source ${ENVPATH}/bin/activate
+    pip2 install ${libname}
+    sysmsg "Copying ${libdir} to ${PYLIBDIR}/"
+    cp -r ${ENVPATH}/lib/python2.7/site-packages/${libdir} ${PYLIBDIR}/${libdir}
 }
 
 
 export PATH="$(pwd)/${ENVPATH}/google_appengine:$PATH"
+export PYTHONPATH=${PYLIBDIR}
+export DJANGO_SETTINGS_MODULE="settings"
+
 
 # Extract cmline args:
 cmd=$1
 shift 1
 
-if [ ${cmd} == 'initproject'  ]; then initproject $@
-elif [ ${cmd} == 'clean'      ]; then clean
-elif [ ${cmd} == 'devsrv'     ]; then clean && collectstatic && devsrv
-elif [ ${cmd} == 'deploy'     ]; then deploy
-elif [ ${cmd} == 'static'     ]; then collectstatic
-elif [ ${cmd} == 'pylib'      ]; then install_pylib $@
-elif [ ${cmd} == 'runtool'    ]; then 
-  tool=$1
-  shift 1
-  PYTHONPATH=".:lib/py" ./${TOOLPATH}/${tool}.py $@
-else 
-  sysmsg "THAR IZ NO COMMAND '${cmd}' PASSIN TO ./manage.py"
-  ./manage.py $@
-fi
+
+case "${cmd}" in 
+'downloaddeps')     cmd_download_deps $@ ;;
+'setupproject')     cmd_setupproject $@ ;;
+'createproject')    cmd_createproject $@ ;;
+'clean')            cmd_clean ;;
+'devsrv')           cmd_clean && cmd_devsrv ;;
+'deploy')           cmd_deploy ;;
+'static')           cmd_collectstatic ;;
+'pylib')            cmd_install_pylib $@ ;;
+'doctest')          python2 -m doctest $@ $@ ;;
+'ide')              vim $@ ;;
+'runtool')    
+    tool=$1
+    shift 1
+    PYTHONPATH=".:lib/py" ./${TOOLPATH}/${tool}.py $@
+    ;;
+*)
+    sysmsg "THAR IZ NO COMMAND '${cmd}' PASSIN TO ./manage.py"
+    ./manage.py ${cmd} $@
+    ;;
+esac
+
+
+#if [ ${cmd} == 'initproject'  ]; then initproject $@
+#elif [ ${cmd} == 'clean'      ]; then clean
+#elif [ ${cmd} == 'devsrv'     ]; then clean && collectstatic && devsrv
+#elif [ ${cmd} == 'deploy'     ]; then deploy
+#elif [ ${cmd} == 'static'     ]; then collectstatic
+#elif [ ${cmd} == 'pylib'      ]; then install_pylib $@
+#elif [ ${cmd} == 'runtool'    ]; then 
+#  tool=$1
+#  shift 1
+#  PYTHONPATH=".:lib/py" ./${TOOLPATH}/${tool}.py $@
+#else 
+#  sysmsg "THAR IZ NO COMMAND '${cmd}' PASSIN TO ./manage.py"
+#  ./manage.py ${cmd} $@
+#fi
