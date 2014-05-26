@@ -209,7 +209,7 @@ case "${cmd}" in
 'deploy')           cmd_deploy ;;
 'static')           cmd_collectstatic ;;
 'pylib')            cmd_install_pylib $@ ;;
-'doctest')          python2 -m doctest $@ $@ ;;
+'doctest')          python2 -m doctest $@ ;;
 'ide')              vim $@ ;;
 'runtool')    
     tool=$1
