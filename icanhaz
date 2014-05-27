@@ -84,11 +84,14 @@ function cmd_download_deps() {
     )
 
     sysmsg "Creating temporary directory ${tmpdir}"
-    mkdir ${tmpdir}
+    mkdir "${tmpdir}"
+
+    sysmsg "Creating libs directory ${PYLIBDIR}"
+    mkdir -p "${PYLIBDIR}"
+
     cd ${tmpdir}
     
 
-    mkdir -p ${PYLIBDIR}
     # Extract the zipfiles
     sysmsg "Downloading dependencies required to run on appengine"
     for url in "${zips[@]}"; do
