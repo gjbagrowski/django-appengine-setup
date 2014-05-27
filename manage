@@ -160,17 +160,23 @@ function cmd_createproject() {
         rm -rf .git
     fi
 
-    git init
-
     # create nested project directory
     mkdir -p "${project}"
     mv "manage" "${project}/."
+
+    # create a git repository
+    git init
+    # and do the first commit
+    git add README.md LICENSE .gitignore "${project}/manage"
+    git commit -m 'Initial commit'
+
+    # change to the nested folder before continuing
     cd "${project}"
 
     cmd_download_deps
     cmd_setupproject $@
 
-    git add "${project}/."
+    git add .
     git commit -m 'Generated project files'
 }
 function cmd_clean() {
@@ -209,8 +215,6 @@ case "${cmd}" in
 'createproject')    cmd_createproject $@ ;;
 'deploy')           cmd_deploy ;;
 'pylib')            cmd_install_pylib $@ ;;
-'doctest')          python2 -m doctest $@ ;;
-'ide')              vim $@ ;;
 'runtool')
     tool=$1
     shift 1
