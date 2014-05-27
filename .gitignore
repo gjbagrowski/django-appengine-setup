@@ -12,7 +12,16 @@
 tmp
 .clocignore
 _build
-/bower_components
-/node_modules
-/env
 .directory
+
+# virtualenv, ignored by appengine
+env/
+# lib/py - python libs prepared for appengine
+lib/
+
+# build folders
+bower_components/
+node_modules/
+
+# appengine
+.gaedata
