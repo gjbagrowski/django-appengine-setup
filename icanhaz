@@ -152,11 +152,20 @@ function cmd_createproject() {
         exit -2
     fi
 
+    project=$1
+
     # Remove existing .git dir
     if [ -e .git ]; then
         sysmsg "Removing existing .git directory"
         rm -rf .git
     fi
+
+    git init
+
+    # create nested project directory
+    mkdir -p "${project}"
+    mv "icanhaz" "${project}/."
+    cd "${project}"
 
     cmd_download_deps
     cmd_setupproject $@
