@@ -77,7 +77,7 @@ function cmd_download_deps() {
     )
     nonrel_deps=(
         'djangoappengine'
-        'django' 
+        'django'
         'djangotoolbox'
         'dbindexer'
         'autoload'
@@ -90,7 +90,6 @@ function cmd_download_deps() {
     mkdir -p "${PYLIBDIR}"
 
     cd ${tmpdir}
-    
 
     # Extract the zipfiles
     sysmsg "Downloading dependencies required to run on appengine"
@@ -159,7 +158,6 @@ function cmd_createproject() {
         rm -rf .git
     fi
 
-
     cmd_download_deps
     cmd_setupproject $@
 }
@@ -202,8 +200,7 @@ export DJANGO_SETTINGS_MODULE="settings"
 cmd=$1
 shift 1
 
-
-case "${cmd}" in 
+case "${cmd}" in
 'downloaddeps')     cmd_download_deps $@ ;;
 'setupproject')     cmd_setupproject $@ ;;
 'createproject')    cmd_createproject $@ ;;
@@ -214,7 +211,7 @@ case "${cmd}" in
 'pylib')            cmd_install_pylib $@ ;;
 'doctest')          python2 -m doctest $@ ;;
 'ide')              vim $@ ;;
-'runtool')    
+'runtool')
     tool=$1
     shift 1
     PYTHONPATH=".:lib/py" ./${TOOLPATH}/${tool}.py $@
@@ -232,11 +229,11 @@ esac
 #elif [ ${cmd} == 'deploy'     ]; then deploy
 #elif [ ${cmd} == 'static'     ]; then collectstatic
 #elif [ ${cmd} == 'pylib'      ]; then install_pylib $@
-#elif [ ${cmd} == 'runtool'    ]; then 
+#elif [ ${cmd} == 'runtool'    ]; then
 #  tool=$1
 #  shift 1
 #  PYTHONPATH=".:lib/py" ./${TOOLPATH}/${tool}.py $@
-#else 
+#else
 #  sysmsg "THAR IZ NO COMMAND '${cmd}' PASSIN TO ./manage.py"
 #  ./manage.py ${cmd} $@
 #fi
