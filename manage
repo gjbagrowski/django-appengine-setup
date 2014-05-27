@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Load config values:
-if [ -e icanhaz.conf ]; then
-    source icahnaz.conf
+if [ -e manage.conf ]; then
+    source manage.conf
 else
     # Defaults
     TOOLPATH="tools"
@@ -23,7 +23,7 @@ function sysmsg() {
 function setup_appengine_env() {
     appenginepath=$1
     if [ -L ${ENVPATH}/google_appengine ]; then
-        sysmsg "removing existing symlink"
+        sysmsg "Removing existing symlink"
         rm ${ENVPATH}/google_appengine
     else
         sysmsg "Appengine symlink does not exist"
@@ -145,7 +145,7 @@ function cmd_setupproject() {
     setup_urls
 }
 function cmd_createproject() {
-    sysmsg "INITIALIZIN TEH PROJECT"
+    sysmsg "Initializing the project"
 
     if [ $# -lt 2 ]; then
         echo "USAGE: $0 createproject PROJECT_NAME APPENGINE_PATH"
@@ -164,35 +164,26 @@ function cmd_createproject() {
 
     # create nested project directory
     mkdir -p "${project}"
-    mv "icanhaz" "${project}/."
+    mv "manage" "${project}/."
     cd "${project}"
 
     cmd_download_deps
     cmd_setupproject $@
 }
 function cmd_clean() {
-    sysmsg "CLEANIN DIS SHIT"
+    sysmsg 'Cleaning '"${pttrn}"
     for pttrn in "${CLEANPTTRNS[@]}"; do
-        #sysmsg "  - Cleaning \"${pttrn}\""
         rm -rf $(find -iname "${pttrn}")
     done
 }
-function cmd_devsrv() {
-  sysmsg "STARTIN TEH SERVR"
-  ./manage.py runserver
-}
 function cmd_deploy() {
-  sysmsg "UPLOADIN TEH APP 2 TEH SERVR"
+  sysmsg "Uploading the app to the server"
   ./manage.py deploy
-}
-function cmd_collectstatic() {
-    sysmsg "COLLECTIN THEM FILEZ"
-    echo yes | ./manage.py collectstatic &> /dev/null
 }
 function cmd_install_pylib() {
     libname=$1
     [[ $# > 1 ]] && libdir=$2 || libdir=$1
-    sysmsg "INSTALLIN ${libname} to ${libdir}"
+    sysmsg "Installing ${libname} to ${libdir}"
     source ${ENVPATH}/bin/activate
     pip2 install ${libname}
     sysmsg "Copying ${libdir} to ${PYLIBDIR}/"
@@ -213,10 +204,7 @@ case "${cmd}" in
 'downloaddeps')     cmd_download_deps $@ ;;
 'setupproject')     cmd_setupproject $@ ;;
 'createproject')    cmd_createproject $@ ;;
-'clean')            cmd_clean ;;
-'devsrv')           cmd_clean && cmd_devsrv ;;
 'deploy')           cmd_deploy ;;
-'static')           cmd_collectstatic ;;
 'pylib')            cmd_install_pylib $@ ;;
 'doctest')          python2 -m doctest $@ ;;
 'ide')              vim $@ ;;
@@ -226,23 +214,6 @@ case "${cmd}" in
     PYTHONPATH=".:lib/py" ./${TOOLPATH}/${tool}.py $@
     ;;
 *)
-    sysmsg "THAR IZ NO COMMAND '${cmd}' PASSIN TO ./manage.py"
     ./manage.py ${cmd} $@
     ;;
 esac
-
-
-#if [ ${cmd} == 'initproject'  ]; then initproject $@
-#elif [ ${cmd} == 'clean'      ]; then clean
-#elif [ ${cmd} == 'devsrv'     ]; then clean && collectstatic && devsrv
-#elif [ ${cmd} == 'deploy'     ]; then deploy
-#elif [ ${cmd} == 'static'     ]; then collectstatic
-#elif [ ${cmd} == 'pylib'      ]; then install_pylib $@
-#elif [ ${cmd} == 'runtool'    ]; then
-#  tool=$1
-#  shift 1
-#  PYTHONPATH=".:lib/py" ./${TOOLPATH}/${tool}.py $@
-#else
-#  sysmsg "THAR IZ NO COMMAND '${cmd}' PASSIN TO ./manage.py"
-#  ./manage.py ${cmd} $@
-#fi
