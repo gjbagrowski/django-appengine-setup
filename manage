@@ -169,6 +169,9 @@ function cmd_createproject() {
 
     cmd_download_deps
     cmd_setupproject $@
+
+    git add "${project}/."
+    git commit -m 'Generated project files'
 }
 function cmd_clean() {
     sysmsg 'Cleaning '"${pttrn}"
